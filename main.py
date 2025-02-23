@@ -9,7 +9,7 @@ from io import BytesIO
 from docx import Document
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from mangum import Mangum
+
 
 # Инициализация FastAPI
 app = FastAPI()
@@ -144,6 +144,5 @@ async def root():
 # Эндпоинт для документации
 @app.get("/docs")
 async def docs():
-    return JSONResponse(content={"message": "Документация доступна по адресу /openapi.json"})
+    return JSONResponse(content={"message": "Документация доступна по адресу /openapi.json"}) 
 
-handler = Mangum(app)
