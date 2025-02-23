@@ -9,6 +9,7 @@ from io import BytesIO
 from docx import Document
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
 
 # Инициализация FastAPI
@@ -146,3 +147,6 @@ async def root():
 async def docs():
     return JSONResponse(content={"message": "Документация доступна по адресу /openapi.json yea"}) 
 
+
+if __name__ == "__main__":
+    uvicorn.run("main:app",  reload=True)
