@@ -1,0 +1,8 @@
+fastapi
+g4f
+python-dotenv
+pypandoc
+python-docx
+logging
+re
+uvicorn
