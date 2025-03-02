@@ -37,17 +37,16 @@ available_models = ["gpt-4o", "gpt-4o-mini", "deepseek-r1", "deepseek-v3", "evil
 image_models = ["flux", "dall-e-3", "midjourney"]
 text_models = [model for model in available_models if model not in image_models]
 
-# Хранение выбранных моделей для пользователей
-user_models = {}
+# Глобальная модель по умолчанию
+current_model = "gpt-4o-mini"
 
 # Функция для генерации текста
-def ask_gpt(prompt: str, user_id: str) -> str:
+def ask_gpt(prompt: str) -> str:
     system_message = {"role": "system", "content": "Пожалуйста, отвечай на русском языке, грамотно."}
-    model = user_models.get(user_id, "gpt-4o-mini")  # Используем модель по умолчанию, если нет выбора
     
     try:
         response = g4f.ChatCompletion.create(
-            model=model,
+            model=current_model,
             messages=[system_message, {"role": "user", "content": prompt}],
             stream=False,
         )
@@ -62,11 +61,11 @@ def ask_gpt(prompt: str, user_id: str) -> str:
         return "Не удалось получить ответ от GPT."
 
 # Функция для генерации изображений
-def gen_img(prompt: str, user_id: str) -> str:
+def gen_img(prompt: str) -> str:
     try:
         client = Client()
         response = client.images.generate(
-            model=user_models.get(user_id),
+            model=current_model,
             prompt=prompt,
             seed=random.randint(0, 10**9),
             response_format="url"
@@ -90,37 +89,36 @@ def format_answer(answer: str) -> str:
 
 # Эндпоинт для генерации текста
 @app.post("/generate_text/")
-async def generate_text(prompt: str, user_id: str):
-    model = user_models.get(user_id, "gpt-4o-mini")
-    if model in image_models:
+async def generate_text(prompt: str):
+    if current_model in image_models:
         raise HTTPException(status_code=400, detail="Выбрана модель для генерации изображений. Пожалуйста, выберите текстовую модель.")
     
-    response = ask_gpt(prompt, user_id)
+    response = ask_gpt(prompt)
     formatted_response = format_answer(response)
     return {"response": formatted_response}
 
 # Эндпоинт для генерации изображений
 @app.post("/generate_image/")
-async def generate_image(prompt: str, user_id: str):
-    model = user_models.get(user_id)
-    if model not in image_models:
+async def generate_image(prompt: str):
+    if current_model not in image_models:
         raise HTTPException(status_code=400, detail="Выбрана текстовая модель. Пожалуйста, выберите модель для генерации изображений.")
     
-    image_url = gen_img(prompt, user_id)
+    image_url = gen_img(prompt)
     return {"image_url": image_url}
 
 # Эндпоинт для установки модели
 @app.post("/set_model/")
-async def set_model(user_id: str, model: str):
+async def set_model(model: str):
+    global current_model
     if model not in available_models:
         raise HTTPException(status_code=400, detail="Недопустимая модель")
     
-    user_models[user_id] = model
+    current_model = model
     return {"status": "success", "message": f"Модель {model} установлена!"}
 
 # Эндпоинт для обработки документов
 @app.post("/process_document/")
-async def process_document(file: UploadFile = File(...), user_query: str = "", user_id: str = ""):
+async def process_document(file: UploadFile = File(...), user_query: str = ""):
     content = await file.read()
     doc_text = ""
     
@@ -133,7 +131,7 @@ async def process_document(file: UploadFile = File(...), user_query: str = "", u
         raise HTTPException(status_code=400, detail="Поддерживаются только .docx и .txt файлы")
     
     combined_text = f"{user_query}\n\n{doc_text}" if user_query else doc_text
-    response = ask_gpt(combined_text, user_id)
+    response = ask_gpt(combined_text)
     formatted_response = format_answer(response)
     return {"response": formatted_response}
 
@@ -149,4 +147,4 @@ async def docs():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app",  reload=True)
+    uvicorn.run("main:app", reload=True)
